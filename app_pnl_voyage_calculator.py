@@ -44,7 +44,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- State Management ---
+# --- State Management Helpers ---
 def init_state(key, default_value):
     if key not in st.session_state:
         st.session_state[key] = default_value
@@ -52,17 +52,14 @@ def init_state(key, default_value):
 def save_state(perm_key, widget_key):
     st.session_state[perm_key] = st.session_state[widget_key]
 
+# Initialize permanent memory
 init_state('current_view', 'Commodity Selection')
 init_state('selected_asset', None)
-
-# Voyage Config Memory
 init_state('p_origin', "Houston (US)")
 init_state('p_destination', "Rotterdam (ARA)")
 init_state('p_ship_type', "Aframax (Crude/Prods)")
 init_state('p_volume', 700000)
 init_state('p_freight_rate', 0.0)
-
-# Pricing & Risk Memory
 init_state('p_buy_price', 0.0)
 init_state('p_sell_price', 0.0)
 init_state('p_fuel_price', 600.0)
@@ -73,7 +70,7 @@ init_state('p_equity', 15)
 init_state('p_demurrage_days', 0)
 init_state('p_demurrage_rate', 35000.0)
 
-# Sync shadow keys for persistence
+# Sync shadow keys (widget persistence)
 st.session_state['_p_origin'] = st.session_state['p_origin']
 st.session_state['_p_destination'] = st.session_state['p_destination']
 st.session_state['_p_ship_type'] = st.session_state['p_ship_type']
@@ -90,12 +87,19 @@ st.session_state['_p_demurrage_days'] = st.session_state['p_demurrage_days']
 st.session_state['_p_demurrage_rate'] = st.session_state['p_demurrage_rate']
 
 # --- Navigation ---
-def set_view(v): st.session_state['current_view'] = v
+def set_view(v): 
+    st.session_state['current_view'] = v
+    if v != "Arbitrage Scanner": st.session_state['show_arb_ribbon'] = False
+
 st.sidebar.title("P&L Voyage Calculator")
 st.sidebar.caption("Navigation")
 if st.sidebar.button("Commodity Selection"): set_view("Commodity Selection")
 if st.sidebar.button("Voyage Configuration"): set_view("Voyage Configuration")
 if st.sidebar.button("Profit & Loss Analysis"): set_view("Profit & Loss Analysis")
+
+st.sidebar.markdown("---")
+if st.sidebar.button("Arbitrage Scanner"): set_view("Arbitrage Scanner")
+
 st.sidebar.markdown("---")
 st.sidebar.caption(f"Active: {st.session_state['current_view']}")
 
@@ -144,7 +148,9 @@ if st.session_state['current_view'] == "Commodity Selection":
     except: current_idx = None
     def update_asset(): st.session_state['p_buy_price'] = st.session_state['p_sell_price'] = 0.0; st.session_state['selected_asset'] = st.session_state['_selected_asset']
     st.selectbox("Select Commodity", list(COMMODITIES.keys()), index=current_idx, key='_selected_asset', on_change=update_asset, placeholder="Choose an asset...", label_visibility="collapsed")
-    if not st.session_state['selected_asset']: st.info("👈 Please select a commodity."); st.stop()
+    if not st.session_state['selected_asset']:
+        # Removed hand emoji
+        st.info("Please select a commodity from the dropdown above to initialize the Market Data."); st.stop()
     if market_data:
         c1, c2, c3 = st.columns(3)
         c1.metric("Last Price", f"${market_data['price']:,.2f}", f"{market_data['delta_1d']*100:.2f}%")
@@ -191,7 +197,7 @@ elif st.session_state['current_view'] == "Voyage Configuration":
         st.caption("Live Route Visualization"); wps = route_data['waypoints']; center = wps[len(wps)//2] if wps else [20,0]
         m = folium.Map(location=center, zoom_start=2, tiles="CartoDB dark_matter", attr=' ', attribution_control=False)
         if wps:
-            folium.PolyLine(locations=wps, color="#3388ff", weight=3).add_to(m)
+            folium.PolyLine(locations=wps, color="#3388ff", weight=3, opacity=0.8, dash_array='5, 10').add_to(m)
             folium.Marker(wps[0], popup="START", icon=folium.Icon(color="green", icon="play")).add_to(m)
             dest_info = PORT_COORDINATES.get(st.session_state['p_destination'], {})
             if dest_info.get("coords"): folium.Marker(dest_info["coords"], popup="END", icon=folium.Icon(color="blue" if dest_info.get("is_eu") else "red", icon="flag")).add_to(m)
@@ -243,3 +249,58 @@ elif st.session_state['current_view'] == "Profit & Loss Analysis":
         st.metric("VaR (95%)", f"${var_95:,.0f}"); st.metric("Expected Mean", f"${mean_p:,.0f}")
         st.caption(f"Calculated for **{m['days']:.1f}** voyage days using **past monthly asset drift** ({market_data['drift_annual']*100/12:.2f}% monthly avg).")
     with mc2: st.plotly_chart(px.histogram(x=sim_profits, nbins=50).add_vline(x=var_95, line_dash="dash", line_color="red").update_layout(template="plotly_dark", height=300, xaxis_title="Net Profit Distribution"), use_container_width=True)
+
+# --- V4: ARBITRAGE SCANNER ---
+elif st.session_state['current_view'] == "Arbitrage Scanner":
+    st.header("Global Arbitrage Intelligence")
+    st.caption("Scanning combinations of all assets and routes to identify trades with peak ROI.")
+
+    # Confirmation via st.toast (bottom-floating) to ensure visibility while scrolled
+    if st.session_state.get('show_arb_ribbon'):
+        st.toast(f"Trade Configuration Loaded: {st.session_state.get('last_loaded_trade')}")
+        st.session_state['show_arb_ribbon'] = False
+
+    opportunities = []
+    fuel_scan_price = get_fuel_market_price()
+    carbon_scan_price = get_carbon_price()
+
+    with st.spinner("Analyzing cross-asset route profitability..."):
+        for name, ticker in COMMODITIES.items():
+            m_data = get_market_data(ticker)
+            if not m_data: continue
+            buy_p = m_data['price']
+            sell_p = buy_p * 1.05
+            req_cargo = COMMODITY_SPECS[name]
+            for (orig, dest), r_data in ROUTES_DB.items():
+                ship_list = [n for n, s in SHIPS.items() if req_cargo in s["category"]]
+                if not ship_list: continue
+                s_type = ship_list[0]
+                vol = SHIPS[s_type]["capacity"]
+                m_scan = calculate_voyage_metrics(r_data['dist'], s_type, vol, 0.0, fuel_scan_price)
+                pnl_scan = calculate_final_pnl(vol, buy_p, sell_p, m_scan['freight_total_cost'], m_scan['fuel_cost'], calculate_carbon_cost(dest, m_scan['fuel_burn_total'], carbon_scan_price), st.session_state.p_insurance, st.session_state.p_interest, m_scan['days'], 0, 35000, st.session_state.p_equity)
+                opportunities.append({
+                    "Commodity": name, "Route": f"{orig} → {dest}", "Origin": orig, "Destination": dest,
+                    "Ship": s_type, "Vol": vol, "Buy": buy_p, "Sell": sell_p, "Profit": pnl_scan['total_profit'], "ROI": pnl_scan['roi']
+                })
+
+    if opportunities:
+        df_arb = pd.DataFrame(opportunities).sort_values(by="ROI", ascending=False).head(10)
+        for i, row in df_arb.iterrows():
+            with st.container():
+                c1, c2, c3, c4 = st.columns([2, 1, 1, 1])
+                c1.markdown(f"**{row['Commodity']}** \n{row['Route']}")
+                c2.metric("ROI", f"{row['ROI']:.2f}%")
+                c3.metric("Profit", f"${row['Profit']:,.0f}")
+                if c4.button("Load Trade", key=f"arb_{i}"):
+                    st.session_state['selected_asset'] = row['Commodity']
+                    st.session_state['p_origin'] = row['Origin']
+                    st.session_state['p_destination'] = row['Destination']
+                    st.session_state['p_ship_type'] = row['Ship']
+                    st.session_state['p_volume'] = row['Vol']
+                    st.session_state['p_buy_price'] = row['Buy']
+                    st.session_state['p_sell_price'] = row['Sell']
+                    st.session_state['p_fuel_price'] = fuel_scan_price
+                    st.session_state['show_arb_ribbon'] = True
+                    st.session_state['last_loaded_trade'] = f"{row['Commodity']} ({row['Route']})"
+                    st.rerun()
+                st.markdown("---")
