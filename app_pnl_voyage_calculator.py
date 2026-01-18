@@ -25,14 +25,44 @@ st.markdown("""
 <style>
     .stApp { background-color: #0E1117; color: #FAFAFA; }
     .stMarkdown, .stHeader, .stSubheader, h1, h2, h3, h4, p, span, div { color: #FAFAFA !important; }
-    .stTextInput input, .stNumberInput input, .stSelectbox div[data-baseweb="select"] { 
-        background-color: #1c1f26; color: #FAFAFA; border-color: #444; 
+    
+    /* INPUTS (NUMBER/TEXT) */
+    .stTextInput input, .stNumberInput input { 
+        background-color: #2d323d; color: #FAFAFA; border-color: #555; 
     }
+
+    /* DROPDOWN CONTAINER (CLOSED) */
+    .stSelectbox div[data-baseweb="select"] { 
+        background-color: #161920 !important; color: #FAFAFA; border-color: #444; 
+    }
+
+    /* DROPDOWN INTERIOR & HIGHLIGHT REMOVAL */
+    div[data-baseweb="popover"] > div { background-color: #1d2129 !important; border: 1px solid #333 !important; }
+    div[role="listbox"] { background-color: #1d2129 !important; }
+    div[role="option"] { 
+        background-color: #1d2129 !important; 
+        color: #FAFAFA !important; 
+    }
+    /* Removes the weird highlight/active bar background */
+    div[role="option"]:hover, div[role="option"][aria-selected="true"] { 
+        background-color: #1d2129 !important;
+        border: none !important;
+        outline: none !important;
+    }
+    
+    /* SIDEBAR GREY NOTIFICATION (TOAST) */
+    div[data-testid="stToast"] {
+        background-color: #161920 !important;
+        color: #FAFAFA !important;
+        border: 1px solid #333;
+    }
+
     div[data-testid="stMetric"] { 
         background-color: #161920; border: 1px solid #333; padding: 15px; border-radius: 8px; 
     }
     div[data-testid="stMetricLabel"] { color: #aaa !important; }
     div[data-testid="stMetricValue"] { color: #FAFAFA !important; }
+    
     div.stButton > button { 
         width: 100%; background-color: #0E1117; color: #FAFAFA; 
         border: 1px solid #30333F; border-radius: 4px; height: 50px; 
@@ -149,7 +179,6 @@ if st.session_state['current_view'] == "Commodity Selection":
     def update_asset(): st.session_state['p_buy_price'] = st.session_state['p_sell_price'] = 0.0; st.session_state['selected_asset'] = st.session_state['_selected_asset']
     st.selectbox("Select Commodity", list(COMMODITIES.keys()), index=current_idx, key='_selected_asset', on_change=update_asset, placeholder="Choose an asset...", label_visibility="collapsed")
     if not st.session_state['selected_asset']:
-        # Removed hand emoji
         st.info("Please select a commodity from the dropdown above to initialize the Market Data."); st.stop()
     if market_data:
         c1, c2, c3 = st.columns(3)
@@ -175,6 +204,8 @@ if st.session_state['current_view'] == "Commodity Selection":
 
 # --- V2: VOYAGE CONFIGURATION ---
 elif st.session_state['current_view'] == "Voyage Configuration":
+    if not st.session_state['selected_asset']:
+        st.info("Please select a commodity in the Commodity Selection tab to begin analysis."); st.stop()
     st.header("Trade Entry & Logistics"); c_map, c_blueprint = st.columns([3, 1])
     ports = sorted(list(set([k[0] for k in ROUTES_DB.keys()] + [k[1] for k in ROUTES_DB.keys()])))
     st.markdown("---"); c_logistics, c_pricing = st.columns(2)
@@ -206,6 +237,8 @@ elif st.session_state['current_view'] == "Voyage Configuration":
 
 # --- V3: PROFIT & LOSS ANALYSIS ---
 elif st.session_state['current_view'] == "Profit & Loss Analysis":
+    if not st.session_state['selected_asset']:
+        st.info("Please select a commodity in the Commodity Selection tab to begin analysis."); st.stop()
     st.header("Financial Simulation & Risk")
     def upd_fuel(): val = get_fuel_market_price(); st.session_state['p_fuel_price'] = st.session_state['_p_fuel_price'] = val
     def upd_sofr(): val = float(macro_data.get('sofr_proxy', 5.5)); st.session_state['p_interest'] = st.session_state['_p_interest'] = val
@@ -255,7 +288,6 @@ elif st.session_state['current_view'] == "Arbitrage Scanner":
     st.header("Global Arbitrage Intelligence")
     st.caption("Scanning combinations of all assets and routes to identify trades with peak ROI.")
 
-    # Confirmation via st.toast (bottom-floating) to ensure visibility while scrolled
     if st.session_state.get('show_arb_ribbon'):
         st.toast(f"Trade Configuration Loaded: {st.session_state.get('last_loaded_trade')}")
         st.session_state['show_arb_ribbon'] = False
