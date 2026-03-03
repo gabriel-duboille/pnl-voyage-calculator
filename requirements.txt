@@ -1,8 +1,8 @@
 streamlit
+yfinance
 pandas
 numpy
 plotly
 folium
 streamlit-folium
-yfinance
-matplotlib
+scipy
