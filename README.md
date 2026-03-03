@@ -1,39 +1,38 @@
 # P&L Voyage Calculator
 
-The P&L Voyage Calculator is a decision-support tool designed to simulate the financial viability and operational risks of commodity trading voyages. It integrates real-time market data with logistical modeling to provide an end-to-end overview of trade profitability.
+This project was built for educational purposes by a 2nd-year Accounting & Finance student at the London School of Economics. The goal was to understand how physical commodity trading firms use transformation in space: buying a commodity at one location and selling it at another — to generate profits, and how they manage the financial risks involved (hedging, freight exposure, financing costs, carbon liabilities).
 
-## Core Functionalities
+The tool is not intended for live trading. It is a simulation environment that connects real market data to simplified logistics and risk models.
 
-* **Market Analysis**: Real-time spot price tracking, momentum analysis, and implied forward curve projections for energy, metals, and agricultural commodities.
-* **Voyage Modeling**: Logistical calculation of distances and steaming times based on a global port and chokepoint database.
-* **Vessel Technical Integration**: Detailed specification modeling for VLCC, Suezmax, Aframax, LNG, and Dry Bulk carriers, including fuel burn rates and cargo capacities.
-* **Financial Risk Management**: Waterfall P&L analysis incorporating SOFR-based financing, insurance premiums, demurrage rates, and EU ETS carbon liabilities.
-* **Sensitivity & Stress Testing**: Interactive heatmaps and 3D risk topography evaluating the impact of price volatility versus freight cost variations on net profit.
-* **Predictive Modeling**: Monte Carlo simulations to calculate 95% Value at Risk (VaR) and Expected Mean profit based on past monthly asset drift.
+## What It Does
 
-## Technical Stack
+- **Market Intelligence**: Live spot prices, real futures strip forward curves (CME/NYMEX/CBOT/COMEX via Yahoo Finance), 10-year seasonality analysis, and cross-commodity correlations across multiple time horizons.
+- **Voyage Modeling**: Route distances, steaming times, and canal transit fees (Suez, Panama) based on a global port and chokepoint database.
+- **Vessel Integration**: Specs for VLCC, Suezmax, Aframax, MR Tanker, LNG Carrier, Capesize, and Panamax — including fuel burn, capacity, and dimensions.
+- **Hedging**: Configurable hedge ratio with futures lock-in price. P&L splits into locked margin vs. unhedged exposure.
+- **P&L Waterfall**: Full cost breakdown including freight, fuel, canal fees, EU ETS carbon (with the 50%/100% intra-EU rule), insurance, SOFR-based financing, and demurrage.
+- **Risk Analysis**: Sensitivity heatmaps, 3D risk surface, and Monte Carlo VaR & CVaR using a Student-t distribution calibrated to historical tail risk.
+- **Contango Carry Scanner**: Scans all commodities and routes for profitable carry trades by comparing spot prices against voyage-duration-matched forward contracts, net of all costs.
 
-* **Language**: Python 3.9+
-* **Framework**: Streamlit
-* **Data Sourcing**: YFinance API (Live feeds for Commodities, Heating Oil proxy for Fuel, and EUA Carbon)
-* **Visualization**: Plotly (Financial Charts) and Folium (Geospatial Mapping)
-* **Computation**: NumPy and Pandas
+## Tech Stack
 
-## Development & Attribution
+- **Python 3.9+** / **Streamlit**
+- **YFinance**: live commodity prices, futures strips, Treasury rates, carbon proxies
+- **Plotly**: financial charts, waterfall, heatmaps, 3D surfaces
+- **Folium**: interactive route maps
+- **SciPy**: fat-tailed Monte Carlo (Student-t VaR/CVaR)
 
-This project was developed through a hybrid approach combining academic foundations with generative AI implementation.
+## Development
 
-* **Logical Framework**: The selection of functionalities, quantitative risk parameters, UI design, and chart types was directed entirely by the author.
-* **Background**: At the time of development, the author possessed foundational experience in Python through Programming modules at the London School of Economics (ST101, ST115).
-* **Technical Implementation**: While the author defined the architectural requirements and logical flow, the majority of the code was generated and refined using AI assistance.
-* **Responsibility**: Any remaining bugs or logical inconsistencies are the sole responsibility of the author.
+The author defined the functionalities, quantitative logic, and UI structure. The code was largely generated and iterated using AI assistance (Claude, Anthropic). Any bugs or logical gaps are the author's responsibility.
 
 ## Disclaimer
 
-This software is for simulation purposes only. It does not constitute financial advice or operational guidance for live trading environments.
+This is a simulation tool for educational purposes. It does not constitute financial or operational advice for live trading.
 
-## Instructions for Use
+## Quick Start
 
-1. **Select Commodity**: Choose an asset to initialize market analysis and fetch real-time spot prices.
-2. **Configure Voyage**: Set Loading/Discharge ports and select an appropriate vessel class for the cargo.
-3. **Analyze P&L**: Review the financial waterfall and run stress tests to evaluate trade risk.
+1. **Market Intelligence**: Select a commodity to load spot data, forward curve, seasonality, and correlations.
+2. **Trade Configuration**: Set ports, vessel, pricing, hedge parameters, and costs.
+3. **P&L Results**: Review the waterfall, run sensitivity analysis, and check VaR/CVaR.
+4. **Contango Carry Scanner**: Scan for profitable carry trades across all assets and routes.
