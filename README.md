@@ -1,6 +1,6 @@
 # P&L Voyage Calculator
 
-This project was built for educational purposes by a 2nd-year Accounting & Finance student at the London School of Economics. The goal was to understand how physical commodity trading firms use transformation in space: buying a commodity at one location and selling it at another — to generate profits, and how they manage the financial risks involved (hedging, freight exposure, financing costs, carbon liabilities).
+This project was built for educational purposes by a 2nd-year Accounting & Finance student at the London School of Economics. The goal was to understand how physical commodity trading firms use transformation in space (buying a commodity at one location and selling it at another to generate profits) and how they manage the financial risks involved (hedging, freight exposure, financing costs, carbon liabilities).
 
 The tool is not intended for live trading. It is a simulation environment that connects real market data to simplified logistics and risk models.
 
